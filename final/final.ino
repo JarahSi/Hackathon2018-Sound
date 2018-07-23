@@ -3,8 +3,11 @@
 
 #define uOneTrigPin 12
 #define uOneEchoPin 11
-#define uOneLEDPin 9
-#define servoPin 2
+#define uTwoTrigPin 10
+#define uTwoEchoPin 9
+
+#define uOneLEDPin 2
+#define servoPin 3
 
 Servo myServo;
 
@@ -19,6 +22,8 @@ void setup() {
   Serial.begin (9600);
   pinMode(uOneTrigPin, OUTPUT);
   pinMode(uOneEchoPin, INPUT);
+  pinMode(uTwoTrigPin, OUTPUT);
+  pinMode(uTwoEchoPin, INPUT);
   pinMode(uOneLEDPin, OUTPUT);
 
   myServo.attach(servoPin);
@@ -41,20 +46,26 @@ void loop() {
  */
 void scanSurroundings()
 {
-  long distance;
+  long distance, distance2;
 
   for(int iteration = 0; iteration < rotationIncrementLimit; iteration++) {
     turnSensor();
+
     distance = getReading(uOneTrigPin, uOneEchoPin);
+    distance2 = getReading(uTwoTrigPin, uTwoEchoPin);
   
     blipsMessage += encodeData(distance);
+    blipsMessage += "|";
+
+    blipsMessage += encodeData(distance2);
     blipsMessage += ",";
   }
 }
 
 String encodeData(long distance)
 {
-  return String(currentDirection) + "/" + String(distance);
+    return String(distance);
+  //return String(currentDirection) + "/" + String(distance);
 }
 
 /*
@@ -67,7 +78,7 @@ void turnSensor()
 
   int scaledVal = currentDirection * 15; //scale to servo coordinates 
   //myServo.write(scaledVal);
-  delay(15);
+  delay(100);
   
   currentDirection = (currentDirection + 1) % rotationIncrementLimit; //rotate it like a clock
 }
