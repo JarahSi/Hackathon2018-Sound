@@ -9,6 +9,7 @@
 #define uOneLEDPin 2
 #define servoPin 3
 
+// TURN ON/OFF servo
 //const bool servoOn = true;
 const bool servoOn = false;
 
@@ -49,12 +50,31 @@ void loop() {
  */
 void scanSurroundings()
 {
-  long distance, distance2;
+  long distance, distanceTwo;
 
   for(int iteration = 0; iteration < rotationIncrementLimit; iteration++) {
+    // Turn sensor base one step to the right
     turnSensor();
 
-    getDistance();
+    // Get readings from both sensors
+    distance = getDistance(uOneTrigPin, uOneEchoPin);
+    distanceTwo = getDistance(uTwoTrigPin, uTwoEchoPin);
+
+    // Front sensor
+    blipsMessage += encodeData(distance);
+    blipsMessage += ",";
+  
+    // Back sensor
+    blipsMessage += encodeData(distanceTwo);
+    blipsMessage += ",";
+
+    // Ping if an object is close by
+    if (isInRange(distance) || isInRange(distanceTwo)) {
+        digitalWrite(uOneLEDPin, LOW);
+    }
+    else {
+      digitalWrite(uOneLEDPin, HIGH);
+    }
   }
 }
 
@@ -77,18 +97,18 @@ String encodeData(long distance)
 }
 
 /*
- * Turns the sensor one increment
+ * Turns the sensors one increment
  */
 void turnSensor()
 {
   // Code for incrementing the servo
   // We want %rotationIncrementLimit% increments to bring it back to
 
-  int scaledVal = currentDirection * (180 / rotationIncrementLimit); //scale to servo coordinates 
+  int scaledVal = currentDirection * (180 / (rotationIncrementLimit - 1)); //scale to servo coordinates 
 
   if (servoOn) {
     myServo.write(scaledVal);
-    delayMicroseconds(30);
+    //delayMicroseconds(500); //removed since the sensors delay
   }
 
   currentDirection = (currentDirection + 1) % rotationIncrementLimit; //rotate it like a clock
@@ -97,39 +117,20 @@ void turnSensor()
 /*
  * Captures distance to the nearest object in front of sensor
  */
-void getDistance()
+int getDistance(int trigPin, int echoPin)
 {
   long distance, distanceTwo, duration, durationTwo;
 
-  digitalWrite(uOneTrigPin, LOW);  // Added this line
-  digitalWrite(uTwoTrigPin, LOW);
+  digitalWrite(trigPin, LOW);  // Added this line
   
   delayMicroseconds(2); // Added this line
-  digitalWrite(uOneTrigPin, HIGH);
-  digitalWrite(uTwoTrigPin, HIGH);
+  digitalWrite(trigPin, HIGH);
 
   delayMicroseconds(10); // Added this line
-  digitalWrite(uOneTrigPin, LOW);
-  digitalWrite(uTwoTrigPin, LOW);
-  duration = pulseIn(uOneEchoPin, HIGH);
-  durationTwo = pulseIn(uTwoEchoPin, HIGH);
+  digitalWrite(trigPin, LOW);
+  
+  duration = pulseIn(echoPin, HIGH);
   distance = (duration/2) / 29.1;
-  distanceTwo = (durationTwo/2) / 29.1;
-
-  // Front sensor
-  blipsMessage += encodeData(distance);
-  blipsMessage += ",";
-
-  // Back sensor
-  blipsMessage += encodeData(distanceTwo);
-  blipsMessage += ",";
-
-  if (isInRange(distance) || isInRange(distanceTwo)) {
-      digitalWrite(uOneLEDPin, LOW);
-  }
-  else {
-    digitalWrite(uOneLEDPin, HIGH);
-  }
 
   return distance;
 }
