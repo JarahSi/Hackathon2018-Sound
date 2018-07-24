@@ -10,8 +10,8 @@
 #define servoPin 3
 
 // TURN ON/OFF servo
-//const bool servoOn = true;
-const bool servoOn = false;
+const bool servoOn = true;
+//const bool servoOn = false;
 
 Servo myServo;
 
@@ -31,6 +31,8 @@ void setup() {
   pinMode(uOneLEDPin, OUTPUT);
 
   myServo.attach(servoPin);
+  myServo.write(0); // Reset to original position;
+  delay(50);
   blipsMessage.reserve(200);        //reserve 200 bytes to avoid memory fragmentation issues
 }
 
@@ -53,9 +55,6 @@ void scanSurroundings()
   long distance, distanceTwo;
 
   for(int iteration = 0; iteration < rotationIncrementLimit; iteration++) {
-    // Turn sensor base one step to the right
-    turnSensor();
-
     // Get readings from both sensors
     distance = getDistance(uOneTrigPin, uOneEchoPin);
     distanceTwo = getDistance(uTwoTrigPin, uTwoEchoPin);
@@ -75,6 +74,9 @@ void scanSurroundings()
     else {
       digitalWrite(uOneLEDPin, HIGH);
     }
+
+    // Turn sensor base one step to the right
+    turnSensor();
   }
 }
 
@@ -103,15 +105,18 @@ void turnSensor()
 {
   // Code for incrementing the servo
   // We want %rotationIncrementLimit% increments to bring it back to
-
-  int scaledVal = currentDirection * (180 / (rotationIncrementLimit - 1)); //scale to servo coordinates 
+  int lastDirection = currentDirection;
+  currentDirection = (currentDirection + 1) % rotationIncrementLimit; //rotate it like a clock
+  int scaledTargetVal = currentDirection * (180 / (rotationIncrementLimit - 1)); //scale to servo coordinates 
 
   if (servoOn) {
-    myServo.write(scaledVal);
-    //delayMicroseconds(500); //removed since the sensors delay
+    // Smoothly move to next step
+    int lastScaledVal = lastDirection * (180 / (rotationIncrementLimit - 1));
+    for(int currentScaledVal = lastScaledVal; currentScaledVal <= scaledTargetVal; currentScaledVal += 9) {
+      myServo.write(currentScaledVal);
+      delay(50);
+    }
   }
-
-  currentDirection = (currentDirection + 1) % rotationIncrementLimit; //rotate it like a clock
 }
 
 /*
