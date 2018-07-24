@@ -9,13 +9,16 @@
 #define uOneLEDPin 2
 #define servoPin 3
 
+//const bool servoOn = true;
+const bool servoOn = false;
+
 Servo myServo;
 
-String blipsMessage = "";         //variable to hold the blips
-const int charLimit = 12;         //blipsMessage character limit
-
-const int rotationIncrementLimit = 12; //number of rotational increments before a full 360 rotation
+const int rotationIncrementLimit = 5; //number of rotational increments before a full 360 rotation
 int currentDirection = 0;         //variable to hold the current direction sensor is facing
+
+String blipsMessage = "";         //variable to hold the blips
+const int charLimit = rotationIncrementLimit * 2;         //blipsMessage character limit
 
 void setup() {
   // put your setup code here, to run once:
@@ -32,13 +35,13 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  long distanceSensorOne;
-
   clearOutgoingBuffer();
 
   scanSurroundings();
 
   sendDataToSerial();
+
+  resetPosition();
 }
 
 /*
@@ -51,21 +54,26 @@ void scanSurroundings()
   for(int iteration = 0; iteration < rotationIncrementLimit; iteration++) {
     turnSensor();
 
-    distance = getReading(uOneTrigPin, uOneEchoPin);
-    distance2 = getReading(uTwoTrigPin, uTwoEchoPin);
-  
-    blipsMessage += encodeData(distance);
-    blipsMessage += "|";
-
-    blipsMessage += encodeData(distance2);
-    blipsMessage += ",";
+    getDistance();
   }
 }
 
+void resetPosition()
+{
+  if (servoOn) {
+    for(int pos = 180; pos >= 0; pos = pos - 9) {
+        myServo.write(pos);
+        delay(50);
+    }
+  }
+}
+
+/*
+ * Prepares the current distance value for output to excel
+ */
 String encodeData(long distance)
 {
-    return String(distance);
-  //return String(currentDirection) + "/" + String(distance);
+  return String(distance);
 }
 
 /*
@@ -76,44 +84,62 @@ void turnSensor()
   // Code for incrementing the servo
   // We want %rotationIncrementLimit% increments to bring it back to
 
-  int scaledVal = currentDirection * 15; //scale to servo coordinates 
-  //myServo.write(scaledVal);
-  delay(100);
-  
+  int scaledVal = currentDirection * (180 / rotationIncrementLimit); //scale to servo coordinates 
+
+  if (servoOn) {
+    myServo.write(scaledVal);
+    delayMicroseconds(30);
+  }
+
   currentDirection = (currentDirection + 1) % rotationIncrementLimit; //rotate it like a clock
 }
 
 /*
- * Captures the distance reading in the current direction
+ * Captures distance to the nearest object in front of sensor
  */
-long getReading(int trigPin, int echoPin)
+void getDistance()
 {
-  long distance = getDistance(trigPin, echoPin);
+  long distance, distanceTwo, duration, durationTwo;
 
-  //printDistance(distance);
-
-  return distance;
-}
-
-long getDistance(int trigPin, int echoPin)
-{
-  long distance, duration;
-
-  digitalWrite(trigPin, LOW);  // Added this line
+  digitalWrite(uOneTrigPin, LOW);  // Added this line
+  digitalWrite(uTwoTrigPin, LOW);
+  
   delayMicroseconds(2); // Added this line
-  digitalWrite(trigPin, HIGH);
+  digitalWrite(uOneTrigPin, HIGH);
+  digitalWrite(uTwoTrigPin, HIGH);
 
   delayMicroseconds(10); // Added this line
-  digitalWrite(trigPin, LOW);
-  duration = pulseIn(echoPin, HIGH);
+  digitalWrite(uOneTrigPin, LOW);
+  digitalWrite(uTwoTrigPin, LOW);
+  duration = pulseIn(uOneEchoPin, HIGH);
+  durationTwo = pulseIn(uTwoEchoPin, HIGH);
   distance = (duration/2) / 29.1;
+  distanceTwo = (durationTwo/2) / 29.1;
+
+  // Front sensor
+  blipsMessage += encodeData(distance);
+  blipsMessage += ",";
+
+  // Back sensor
+  blipsMessage += encodeData(distanceTwo);
+  blipsMessage += ",";
+
+  if (isInRange(distance) || isInRange(distanceTwo)) {
+      digitalWrite(uOneLEDPin, LOW);
+  }
+  else {
+    digitalWrite(uOneLEDPin, HIGH);
+  }
 
   return distance;
 }
 
+/*
+ * Debug print for distance
+ */
 void printDistance(long distance)
 {
-  if (distance >= 200 || distance <= 0){
+  if (isInRange(distance)){
     Serial.println("Out of range");
     digitalWrite(uOneLEDPin, LOW);
     
@@ -125,6 +151,14 @@ void printDistance(long distance)
   }
 }
 
+/*
+ * Helper function 
+ */
+bool isInRange(long distance)
+{
+  return (distance >= 200 || distance <= 0);
+}
+
 void sendDataToSerial()
 {
   Serial.print(blipsMessage);
@@ -133,8 +167,8 @@ void sendDataToSerial()
 
 void clearOutgoingBuffer()
 {
-  blipsMessage = " , , , , , , , , , , , , , , , , , , ,";         //send all empty characters to refresh cordoba data
-  sendDataToSerial();                           //send directly to serial
+  //blipsMessage = " , , , , , , , , , , , , , , , , , , ,";         //send all empty characters to refresh cordoba data
+  //sendDataToSerial();                           //send directly to serial
   blipsMessage = "";                            //reset to empty string
 }
 
