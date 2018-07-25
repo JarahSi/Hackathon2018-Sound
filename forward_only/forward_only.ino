@@ -4,7 +4,10 @@
 
 #define vibratorPin 3
 
-const int promptDistance = 200;
+long holder;                      //store cm from last time in loop
+const int maxDistance = 200;      //store maxdistance
+const int promptDistance = 30;
+int lastDistance;                 //keep track of the last distance
 String blipsMessage = "";         //variable to hold the blips
 
 void setup() {
@@ -36,6 +39,10 @@ void scanSurroundings()
   // Get readings from both sensors
   distance = getDistance(uOneTrigPin, uOneEchoPin);
 
+  if (distance > maxDistance) {
+    distance = maxDistance;
+  }
+
   // Front sensor
   blipsMessage = encodeData(distance);
 
@@ -61,7 +68,7 @@ String encodeData(long distance)
  */
 int getDistance(int trigPin, int echoPin)
 {
-  long distance, distanceTwo, duration, durationTwo;
+  long distance, duration, Speed;
 
   digitalWrite(trigPin, LOW);  // Added this line
   
@@ -73,8 +80,20 @@ int getDistance(int trigPin, int echoPin)
   
   duration = pulseIn(echoPin, HIGH);
   distance = (duration/2) / 29.1;
+  
+//  Speed = distanceOverTime(holder, distance);
+//  holder = distance;
+//  Speed = abs(Speed);
 
+//  Serial.print("Speed :");
+//  Serial.print(Speed);
+//  Serial.println();
+  
   return distance;
+}
+
+long distanceOverTime(long first,long second){
+ return ((first-second)/.1);//taking cm/s to mph
 }
 
 /*
@@ -98,7 +117,7 @@ void printDistance(long distance)
  */
 bool isInRange(long distance)
 {
-  return (distance < promptDistance && distance > 0);
+  return (distance <= promptDistance && distance > 0);
 }
 
 void vibrate(long distance)
