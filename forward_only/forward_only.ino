@@ -27,6 +27,8 @@ void loop() {
   scanSurroundings();
 
   sendDataToSerial();
+
+  delay(500);
 }
 
 /*
@@ -128,7 +130,16 @@ void vibrate(long distance)
     vibrateSpeed = 0;
   }
   else {
-    vibrateSpeed = 255 - distance;
+
+    if (distance < 10) {
+      vibrateSpeed = 255;
+    }
+    else if (distance < 50) {
+      vibrateSpeed = 100;
+    }
+    else {
+      vibrateSpeed = 20;
+    }
   }
 
   analogWrite(vibratorPin, vibrateSpeed);
